@@ -3,13 +3,34 @@ require('chromedriver');
 
 const TIMEOUT = 50000;
 
+const getDriver = async () => {
+    const driver = await new Builder().forBrowser('chrome').build();
+    driver.manage().window().maximize();
+    driver.manage().setTimeouts({implicit: TIMEOUT, pageLoad: TIMEOUT, script: TIMEOUT});
+    return driver;
+};
+
+const findElement = async (driver, selector) => {
+    return await driver.findElement(By.css(selector));
+};
+
+const findElements = async (driver, selector) => {
+    return await driver.findElements(By.css(selector));
+};
+
+const getText = async (element) => {
+    return await element.getText();
+};
+
+const clickElement = async (element) => {
+    await element.click();
+};
+
 describe('Navigate Waterstones Website', () => {
     let driver;
 
     beforeAll(async () => {
-        driver = await new Builder().forBrowser('chrome').build();
-        await driver.manage().window().maximize();
-
+        driver = await getDriver();
         await driver.get("https://www.waterstones.com/");
         await acceptCookies(driver);
     });
@@ -24,7 +45,7 @@ describe('Navigate Waterstones Website', () => {
     });
 
     test('Test Scroll down to "Bestsellers" option', async () => {
-        const bestsellersSection = await driver.findElement(By.css("#Bestsellers"));
+        const bestsellersSection = await findElement(driver, "#Bestsellers");
         await driver.executeScript("arguments[0].scrollIntoView();", bestsellersSection);
 
         const isBestsellersVisible = await bestsellersSection.isDisplayed();
@@ -32,8 +53,8 @@ describe('Navigate Waterstones Website', () => {
     });
 
     test('Test Click on “See More” button', async () => {
-        const seeMoreButton = await driver.findElement(By.css(".see-more a"));
-        await seeMoreButton.click();
+        const seeMoreButton = await findElement(driver, ".see-more a");
+        await clickElement(seeMoreButton);
 
         // Wait for the Bestselling Books page to load
         await driver.wait(until.urlContains("/bestsellers"), TIMEOUT);
@@ -43,57 +64,57 @@ describe('Navigate Waterstones Website', () => {
     });
 
     test('Test Click on “Business, Finance & Law” filter', async () => {
-        const businessFinanceLawFilter = await driver.findElement(By.linkText("Business, Finance & Law"));
-        await businessFinanceLawFilter.click();
+        const businessFinanceLawFilter = await findElement(driver, By.linkText("Business, Finance & Law"));
+        await clickElement(businessFinanceLawFilter);
 
         // Wait for the filter to be applied
         await driver.wait(until.urlContains("/business-finance-law"), TIMEOUT);
 
-        const appliedFilter = await driver.findElement(By.css(".breadcrumb-current"));
-        expect(await appliedFilter.getText()).toContain("Business, Finance & Law");
+        const appliedFilter = await findElement(driver, ".breadcrumb-current");
+        expect(await getText(appliedFilter)).toContain("Business, Finance & Law");
 
         // Verify more than 1 product found
-        const searchCountText = await driver.findElement(By.className("search-result-tab-all")).getText();
+        const searchCountText = await getText(await findElement(driver, By.className("search-result-tab-all")));
         const searchCountNum = parseInt(searchCountText.match(/\d+/)[0]);
         expect(searchCountNum).toBeGreaterThan(1);
     });
 
     test('Test Click on “Accounting” subfilter', async () => {
-        const accountingSubfilter = await driver.findElement(By.linkText("Accounting"));
-        await accountingSubfilter.click();
+        const accountingSubfilter = await findElement(driver, By.linkText("Accounting"));
+        await clickElement(accountingSubfilter);
 
         // Wait for the subfilter to be applied
         await driver.wait(until.urlContains("/accounting"), TIMEOUT);
 
-        const appliedFilter = await driver.findElement(By.css(".breadcrumb-current"));
-        expect(await appliedFilter.getText()).toContain("Accounting");
+        const appliedFilter = await findElement(driver, ".breadcrumb-current");
+        expect(await getText(appliedFilter)).toContain("Accounting");
 
         // Verify fewer products are displayed after filtering
-        const productItems = await driver.findElements(By.css(".product-cell"));
+        const productItems = await findElements(driver, ".product-cell");
         expect(productItems.length).toBeLessThan(10); // Assuming less than 10 products for demo
 
         // Verify more than 1 product found
-        const searchCountText = await driver.findElement(By.className("search-result-tab-all")).getText();
+        const searchCountText = await getText(await findElement(driver, By.className("search-result-tab-all")));
         const searchCountNum = parseInt(searchCountText.match(/\d+/)[0]);
         expect(searchCountNum).toBeGreaterThan(1);
     });
 
     test('Test Click on “Cost accounting” subfilter', async () => {
-        const costAccountingSubfilter = await driver.findElement(By.linkText("Cost Accounting"));
-        await costAccountingSubfilter.click();
+        const costAccountingSubfilter = await findElement(driver, By.linkText("Cost Accounting"));
+        await clickElement(costAccountingSubfilter);
 
         // Wait for the subfilter to be applied
         await driver.wait(until.urlContains("/cost-accounting"), TIMEOUT);
 
-        const appliedFilter = await driver.findElement(By.css(".breadcrumb-current"));
-        expect(await appliedFilter.getText()).toContain("Cost Accounting");
+        const appliedFilter = await findElement(driver, ".breadcrumb-current");
+        expect(await getText(appliedFilter)).toContain("Cost Accounting");
 
         // Verify fewer products are displayed after filtering
-        const productItems = await driver.findElements(By.css(".product-cell"));
+        const productItems = await findElements(driver, ".product-cell");
         expect(productItems.length).toBeLessThan(10); // Assuming less than 10 products for demo
 
         // Verify more than 1 product found
-        const searchCountText = await driver.findElement(By.className("search-result-tab-all")).getText();
+        const searchCountText = await getText(await findElement(driver, By.className("search-result-tab-all")));
         const searchCountNum = parseInt(searchCountText.match(/\d+/)[0]);
         expect(searchCountNum).toBeGreaterThan(1);
     });
@@ -101,9 +122,8 @@ describe('Navigate Waterstones Website', () => {
 
 async function acceptCookies(driver) {
     try {
-        await driver.wait(until.elementLocated(By.id("onetrust-accept-btn-handler")), TIMEOUT);
-        const cookieButton = await driver.findElement(By.id("onetrust-accept-btn-handler"));
-        await cookieButton.click();
+        const cookieButton = await findElement(driver, By.id("onetrust-accept-btn-handler"));
+        await clickElement(cookieButton);
     } catch (error) {
         console.error("Failed to accept cookies:", error);
     }

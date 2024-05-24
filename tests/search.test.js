@@ -3,13 +3,34 @@ require('chromedriver');
 
 const TIMEOUT = 50000;
 
+const getDriver = async () => {
+    const driver = await new Builder().forBrowser('chrome').build();
+    driver.manage().window().maximize();
+    driver.manage().setTimeouts({implicit: TIMEOUT, pageLoad: TIMEOUT, script: TIMEOUT});
+    return driver;
+};
+
+const findElement = async (driver, selector) => {
+    return await driver.findElement(By.css(selector));
+};
+
+const findElements = async (driver, selector) => {
+    return await driver.findElements(By.css(selector));
+};
+
+const getText = async (element) => {
+    return await element.getText();
+};
+
+const clickElement = async (element) => {
+    await element.click();
+};
+
 describe('Search and Filter Products on Waterstones Website', () => {
     let driver;
 
     beforeAll(async () => {
-        driver = await new Builder().forBrowser('chrome').build();
-        await driver.manage().window().maximize();
-
+        driver = await getDriver();
         await driver.get("https://www.waterstones.com/");
         await acceptCookies(driver);
     });
@@ -24,55 +45,55 @@ describe('Search and Filter Products on Waterstones Website', () => {
     });
 
     test('Test Search for keyword “harry potter”', async () => {
-        const searchField = await driver.findElement(By.css(".input-search"));
-        await searchField.click();
+        const searchField = await findElement(driver, ".input-search");
+        await clickElement(searchField);
         await searchField.sendKeys("harry potter", Key.RETURN);
 
         // Wait for search results to load
         await driver.wait(until.elementLocated(By.className("search-result-tab-all")), TIMEOUT);
 
         // Verify more than 1 product found
-        const searchCountText = await driver.findElement(By.className("search-result-tab-all")).getText();
+        const searchCountText = await getText(await findElement(driver, ".search-result-tab-all"));
         const searchCountNum = parseInt(searchCountText.match(/\d+/)[0]);
         expect(searchCountNum).toBeGreaterThan(1);
 
         // Verify products contain searched keyword
-        const productTitles = await driver.findElements(By.css(".title-wrap h3"));
-        const productTitlesText = await Promise.all(productTitles.map(title => title.getText()));
+        const productTitles = await findElements(driver, ".title-wrap h3");
+        const productTitlesText = await Promise.all(productTitles.map(title => getText(title)));
         expect(productTitlesText.every(title => title.toLowerCase().includes("harry potter"))).toBe(true);
     });
 
     test('Test Sort searched items by price', async () => {
         // Select price sort option
-        const sortDropdown = await driver.findElement(By.css(".sort-dropdown"));
-        await sortDropdown.click();
+        const sortDropdown = await findElement(driver, ".sort-dropdown");
+        await clickElement(sortDropdown);
 
         const priceSortOption = await driver.findElement(By.xpath("//li[contains(text(), 'Price - Low to High')]"));
-        await priceSortOption.click();
+        await clickElement(priceSortOption);
 
         // Wait for search results to reload
         await driver.wait(until.elementLocated(By.className("search-result-tab-all")), TIMEOUT);
 
         // Verify products are sorted by price
-        const productPrices = await driver.findElements(By.css(".book-price"));
-        const sortedPrices = await Promise.all(productPrices.map(price => price.getText().then(text => parseFloat(text.replace('£', '')))));
+        const productPrices = await findElements(driver, ".book-price");
+        const sortedPrices = await Promise.all(productPrices.map(price => getText(price).then(text => parseFloat(text.replace('£', '')))));
         expect(sortedPrices).toEqual(sortedPrices.slice().sort((a, b) => a - b));
     });
 
     test('Test Filter products by Format, select filter as “Hardback”', async () => {
         // Apply Format filter
         const formatFilter = await driver.findElement(By.xpath("//label[contains(text(), 'Format')]/following-sibling::div//input[@type='checkbox' and @value='Hardback']"));
-        await formatFilter.click();
+        await clickElement(formatFilter);
 
         // Wait for search results to reload
         await driver.wait(until.elementLocated(By.className("search-result-tab-all")), TIMEOUT);
 
         // Verify fewer products are displayed after filtering by Hardback format
-        const productItems = await driver.findElements(By.css(".product-cell"));
+        const productItems = await findElements(driver, ".product-cell");
         expect(productItems.length).toBeLessThan(10); // Assuming less than 10 products for demo
 
         // Verify items selected have correct format
-        const productFormats = await Promise.all(productItems.map(item => item.findElement(By.css(".format-type")).getText()));
+        const productFormats = await Promise.all(productItems.map(item => getText(item.findElement(By.css(".format-type")))));
         expect(productFormats.every(format => format.toLowerCase().includes("hardback"))).toBe(true);
     });
 });
@@ -80,8 +101,8 @@ describe('Search and Filter Products on Waterstones Website', () => {
 async function acceptCookies(driver) {
     try {
         await driver.wait(until.elementLocated(By.id("onetrust-accept-btn-handler")), TIMEOUT);
-        const cookieButton = await driver.findElement(By.id("onetrust-accept-btn-handler"));
-        await cookieButton.click();
+        const cookieButton = await findElement(driver, "#onetrust-accept-btn-handler");
+        await clickElement(cookieButton);
     } catch (error) {
         console.error("Failed to accept cookies:", error);
     }
